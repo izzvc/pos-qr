@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -62,68 +62,68 @@
 </head>
 <body>
 
-<!-- Skrin PIN -->
+<!-- PIN screen -->
 <div id="lock" class="wrap">
   <h1>POS QR</h1>
   <div class="card">
-    <h2 id="lock-title">Masukkan PIN</h2>
+    <h2 id="lock-title">Enter PIN</h2>
     <p class="hint" id="lock-hint"></p>
     <form id="lock-form">
       <input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12">
       <div class="msg" id="lock-msg"></div>
-      <button class="btn" type="submit">Teruskan</button>
+      <button class="btn" type="submit">Continue</button>
     </form>
-    <button class="btn red" id="reset" type="button">Lupa PIN? Padam semua</button>
+    <button class="btn red" id="reset" type="button">Forgot PIN? Erase all</button>
   </div>
 </div>
 
-<!-- Senarai akaun -->
+<!-- Account list -->
 <div id="main" class="wrap hidden">
   <h1>POS QR</h1>
   <div class="top">
-    <button class="btn" id="add">+ Tambah</button>
-    <button class="btn grey" id="print-all">Print semua</button>
+    <button class="btn" id="add">+ Add</button>
+    <button class="btn grey" id="print-all">Print all</button>
   </div>
   <div class="card" id="list"></div>
-  <button class="btn grey" id="lock-now">Kunci app</button>
+  <button class="btn grey" id="lock-now">Lock app</button>
 </div>
 
-<!-- Tambah / edit -->
+<!-- Add / edit -->
 <div id="edit" class="wrap hidden">
   <div class="card">
-    <h2 id="edit-title">Tambah akaun</h2>
+    <h2 id="edit-title">Add account</h2>
     <form id="edit-form">
-      <label for="f-label">Nama (contoh: Kaunter 1)</label>
+      <label for="f-label">Name (e.g. Counter 1)</label>
       <input id="f-label" type="text" autocomplete="off">
       <label for="f-user">Username</label>
       <input id="f-user" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
       <label for="f-pass">Password</label>
       <div class="pw">
         <input id="f-pass" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
-        <button type="button" id="f-toggle">Tunjuk</button>
+        <button type="button" id="f-toggle">Show</button>
       </div>
-      <label for="f-end">Lepas scan, scanner tekan</label>
+      <label for="f-end">After scanning, the scanner presses</label>
       <select id="f-end">
-        <option value="tab-enter">Tab + Enter (terus login)</option>
-        <option value="tab">Tab sahaja</option>
-        <option value="enter">Tiada (username + Tab + password je)</option>
+        <option value="tab-enter">Tab + Enter (logs in directly)</option>
+        <option value="tab">Tab only</option>
+        <option value="enter">Nothing (just username + Tab + password)</option>
       </select>
       <div class="msg" id="edit-msg"></div>
-      <button class="btn" type="submit">Simpan</button>
+      <button class="btn" type="submit">Save</button>
     </form>
-    <button class="btn grey" id="edit-cancel" type="button">Batal</button>
-    <button class="btn red hidden" id="edit-delete" type="button">Padam akaun ni</button>
+    <button class="btn grey" id="edit-cancel" type="button">Cancel</button>
+    <button class="btn red hidden" id="edit-delete" type="button">Delete this account</button>
   </div>
 </div>
 
-<!-- Papar QR -->
+<!-- Show QR -->
 <div id="show" class="wrap hidden">
   <div class="card center">
     <h2 id="show-name"></h2>
     <div id="show-qr"></div>
-    <p class="hint" style="margin-top:12px">Letak kursor dalam field username kat POS, lepas tu scan.</p>
-    <button class="btn" id="show-print">Print QR ni</button>
-    <button class="btn grey" id="show-close">Tutup</button>
+    <p class="hint" style="margin-top:12px">Put the cursor in the POS username field, then scan.</p>
+    <button class="btn" id="show-print">Print this QR</button>
+    <button class="btn grey" id="show-close">Close</button>
   </div>
 </div>
 
@@ -167,11 +167,11 @@ function showLock() {
   $('show-qr').innerHTML = ''; $('print-area').innerHTML = '';
   const v = loadVault();
   if (!v) {
-    $('lock-title').textContent = 'Set PIN baru';
-    $('lock-hint').textContent = 'Minimum 4 digit. PIN ni untuk buka app dan encrypt password dalam phone.';
+    $('lock-title').textContent = 'Set a new PIN';
+    $('lock-hint').textContent = 'At least 4 digits. This PIN unlocks the app and encrypts the passwords on your phone.';
     $('reset').classList.add('hidden');
   } else {
-    $('lock-title').textContent = 'Masukkan PIN';
+    $('lock-title').textContent = 'Enter PIN';
     $('lock-hint').textContent = '';
     $('reset').classList.remove('hidden');
   }
@@ -185,16 +185,16 @@ $('lock-form').onsubmit = async e => {
   $('lock-msg').textContent = '';
 
   if (!v) {
-    if (pin.length < 4) { $('lock-msg').textContent = 'PIN minimum 4 digit'; return; }
+    if (pin.length < 4) { $('lock-msg').textContent = 'PIN must be at least 4 digits'; return; }
     if (firstPin === null) {
       firstPin = pin; $('pin').value = '';
-      $('lock-title').textContent = 'Masukkan PIN sekali lagi';
+      $('lock-title').textContent = 'Enter the PIN again';
       return;
     }
     if (pin !== firstPin) {
       firstPin = null; $('pin').value = '';
-      $('lock-title').textContent = 'Set PIN baru';
-      $('lock-msg').textContent = 'PIN tak sama, cuba lagi';
+      $('lock-title').textContent = 'Set a new PIN';
+      $('lock-msg').textContent = 'PINs do not match, try again';
       return;
     }
     salt = crypto.getRandomValues(new Uint8Array(16));
@@ -213,12 +213,12 @@ $('lock-form').onsubmit = async e => {
     showMain();
   } catch (err) {
     key = null; $('pin').value = '';
-    $('lock-msg').textContent = 'PIN salah';
+    $('lock-msg').textContent = 'Wrong PIN';
   }
 };
 
 $('reset').onclick = () => {
-  if (confirm('Padam semua akaun yang disimpan dan set PIN baru?')) {
+  if (confirm('Erase all saved accounts and set a new PIN?')) {
     localStorage.removeItem(VKEY);
     showLock();
   }
@@ -226,19 +226,19 @@ $('reset').onclick = () => {
 
 $('lock-now').onclick = showLock;
 
-// Auto kunci bila keluar dari app
+// Auto-lock when leaving the app
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && key && !printing) showLock();
 });
 
-/* ---------- Senarai ---------- */
+/* ---------- List ---------- */
 function showMain() { render(); screen('main'); }
 
 function render() {
   const list = $('list');
   list.innerHTML = '';
   if (!accounts.length) {
-    list.innerHTML = '<p class="empty">Belum ada akaun. Tekan + Tambah.</p>';
+    list.innerHTML = '<p class="empty">No accounts yet. Tap + Add.</p>';
   }
   accounts.forEach(a => {
     const row = document.createElement('div');
@@ -255,14 +255,14 @@ function render() {
   $('print-all').disabled = !accounts.length;
 }
 
-/* ---------- Tambah / edit ---------- */
+/* ---------- Add / edit ---------- */
 function openEdit(a) {
   editingId = a ? a.id : null;
-  $('edit-title').textContent = a ? 'Edit akaun' : 'Tambah akaun';
+  $('edit-title').textContent = a ? 'Edit account' : 'Add account';
   $('f-label').value = a ? (a.label || '') : '';
   $('f-user').value = a ? a.user : '';
   $('f-pass').value = a ? a.pass : '';
-  $('f-pass').type = 'password'; $('f-toggle').textContent = 'Tunjuk';
+  $('f-pass').type = 'password'; $('f-toggle').textContent = 'Show';
   $('f-end').value = a ? a.end : 'tab-enter';
   $('edit-msg').textContent = '';
   $('edit-delete').classList.toggle('hidden', !a);
@@ -275,7 +275,7 @@ $('edit-cancel').onclick = showMain;
 $('f-toggle').onclick = () => {
   const p = $('f-pass');
   p.type = p.type === 'password' ? 'text' : 'password';
-  $('f-toggle').textContent = p.type === 'password' ? 'Tunjuk' : 'Sorok';
+  $('f-toggle').textContent = p.type === 'password' ? 'Show' : 'Hide';
 };
 
 $('edit-form').onsubmit = async e => {
@@ -286,7 +286,7 @@ $('edit-form').onsubmit = async e => {
     pass: $('f-pass').value,
     end: $('f-end').value
   };
-  if (!item.user || !item.pass) { $('edit-msg').textContent = 'Isi username dan password dulu.'; return; }
+  if (!item.user || !item.pass) { $('edit-msg').textContent = 'Enter a username and password first.'; return; }
   if (editingId) {
     const i = accounts.findIndex(x => x.id === editingId);
     accounts[i] = { ...accounts[i], ...item };
@@ -298,7 +298,7 @@ $('edit-form').onsubmit = async e => {
 };
 
 $('edit-delete').onclick = async () => {
-  if (!confirm('Padam akaun ni?')) return;
+  if (!confirm('Delete this account?')) return;
   accounts = accounts.filter(x => x.id !== editingId);
   await saveVault();
   showMain();
@@ -306,7 +306,7 @@ $('edit-delete').onclick = async () => {
 
 /* ---------- QR ---------- */
 function payload(a) {
-  // \t = Tab (pindah ke field password), \n = Enter (login)
+  // \t = Tab (move to password field), \n = Enter (log in)
   const suffix = { 'tab-enter': '\t\n', 'tab': '\t', 'enter': '' }[a.end] || '';
   return a.user + '\t' + a.pass + suffix;
 }
