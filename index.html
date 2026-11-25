@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>POS QR</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
@@ -328,8 +329,48 @@ function showQR(a) {
 $('show-close').onclick = () => { $('show-qr').innerHTML = ''; showMain(); };
 $('print-all').onclick = () => printItems(accounts);
 
-/* ---------- Print (A4, QR 2.5cm) ---------- */
-function printItems(items) {
+/* ---------- Print (A4 PDF, QR 2.5cm) ---------- */
+function makePdf(items) {
+  if (!window.jspdf) return null;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const size = 25, gap = 6, labelH = 5, margin = 10;
+  const cols = Math.floor((210 - 2 * margin + gap) / (size + gap));
+  let col = 0, y = margin;
+  doc.setFillColor(0, 0, 0);
+  items.forEach(a => {
+    if (col === 0 && y + size + labelH > 297 - margin) { doc.addPage(); y = margin; doc.setFillColor(0, 0, 0); }
+    const x = margin + col * (size + gap);
+    const q = qrcode(0, 'M');
+    q.addData(payload(a));
+    q.make();
+    const n = q.getModuleCount(), quiet = 4, cell = size / (n + 2 * quiet);
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (q.isDark(r, c)) doc.rect(x + (c + quiet) * cell, y + (r + quiet) * cell, cell + 0.02, cell + 0.02, 'F');
+      }
+    }
+    doc.setFontSize(7);
+    doc.text(a.label || a.user, x + size / 2, y + size + 3, { align: 'center', maxWidth: size });
+    col++;
+    if (col >= cols) { col = 0; y += size + labelH + gap; }
+  });
+  return new File([doc.output('blob')], 'pos-qr.pdf', { type: 'application/pdf' });
+}
+
+async function printItems(items) {
+  let file = null;
+  try { file = makePdf(items); } catch (e) { file = null; }
+
+  // iPhone: open the Share sheet with the PDF (choose Print or Save to Files)
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    printing = true;
+    try { await navigator.share({ files: [file], title: 'POS QR' }); } catch (e) {}
+    printing = false;
+    return;
+  }
+
+  // Computer: normal browser print
   const area = $('print-area');
   area.innerHTML = '';
   items.forEach(a => {
