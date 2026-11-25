@@ -1,4 +1,4 @@
-const CACHE = 'posqr-v2';
+const CACHE = 'posqr-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -17,10 +17,24 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  const req = e.request;
+  // Page itself: always try the network first so updates show up, fall back to cache offline
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req, { cache: 'no-store' })
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put('./index.html', copy));
+          return res;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+  e.respondWith(caches.match(req).then(r => r || fetch(req)));
 });
