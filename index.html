@@ -103,11 +103,11 @@
         <input id="f-pass" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
         <button type="button" id="f-toggle">Show</button>
       </div>
-      <label for="f-end">After scanning, the scanner presses</label>
+      <label for="f-end">QR type</label>
       <select id="f-end">
-        <option value="tab-enter">Tab + Enter (logs in directly)</option>
-        <option value="tab">Tab only</option>
-        <option value="enter">Nothing (just username + Tab + password)</option>
+        <option value="pass-enter">Password only + Enter (use with "Remember my email")</option>
+        <option value="split">2 QRs: email, then password + Enter</option>
+        <option value="tab-enter">1 QR: email + Tab + password + Enter (scanner must send Tab)</option>
       </select>
       <div class="msg" id="edit-msg"></div>
       <button class="btn" type="submit">Save</button>
@@ -122,7 +122,7 @@
   <div class="card center">
     <h2 id="show-name"></h2>
     <div id="show-qr"></div>
-    <p class="hint" style="margin-top:12px">Put the cursor in the POS username field, then scan.</p>
+    <p class="hint" id="show-tip" style="margin-top:12px"></p>
     <button class="btn" id="show-print">Print this QR</button>
     <button class="btn grey" id="show-close">Close</button>
   </div>
@@ -264,7 +264,7 @@ function openEdit(a) {
   $('f-user').value = a ? a.user : '';
   $('f-pass').value = a ? a.pass : '';
   $('f-pass').type = 'password'; $('f-toggle').textContent = 'Show';
-  $('f-end').value = a ? a.end : 'tab-enter';
+  $('f-end').value = a && ['pass-enter','split','tab-enter'].includes(a.end) ? a.end : 'pass-enter';
   $('edit-msg').textContent = '';
   $('edit-delete').classList.toggle('hidden', !a);
   screen('edit');
@@ -306,22 +306,52 @@ $('edit-delete').onclick = async () => {
 };
 
 /* ---------- QR ---------- */
-function payload(a) {
-  // \t = Tab (move to password field), \n = Enter (log in)
-  const suffix = { 'tab-enter': '\t\n', 'tab': '\t', 'enter': '' }[a.end] || '';
-  return a.user + '\t' + a.pass + suffix;
+// Each account gives one or more codes: { caption, data }
+// \t = Tab (move to next field), \n = Enter (log in)
+function codes(a) {
+  const name = a.label || a.user;
+  if (a.end === 'split') return [
+    { caption: name + ' - 1 Email', data: a.user },
+    { caption: name + ' - 2 Password', data: a.pass + '\n' }
+  ];
+  if (a.end === 'tab-enter' || a.end === 'tab') return [{ caption: name, data: a.user + '\t' + a.pass + '\n' }];
+  return [{ caption: name, data: a.pass + '\n' }];
 }
 
-function qrSvg(a) {
+function makeQr(data) {
   const q = qrcode(0, 'M');
-  q.addData(payload(a));
+  q.addData(data);
   q.make();
-  return q.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
+  return q;
+}
+
+function qrSvg(data) {
+  return makeQr(data).createSvgTag({ cellSize: 6, margin: 4, scalable: true });
 }
 
 function showQR(a) {
   $('show-name').textContent = a.label || a.user;
-  $('show-qr').innerHTML = qrSvg(a);
+  const box = $('show-qr');
+  box.innerHTML = '';
+  const list = codes(a);
+  list.forEach(c => {
+    if (list.length > 1) {
+      const cap = document.createElement('p');
+      cap.className = 'hint';
+      cap.style.margin = '14px 0 6px';
+      cap.textContent = c.caption;
+      box.appendChild(cap);
+    }
+    const d = document.createElement('div');
+    d.innerHTML = qrSvg(c.data);
+    box.appendChild(d);
+  });
+  const tips = {
+    'pass-enter': 'Make sure your email is already filled in (tick "Remember my email" once), tap the Password field, then scan.',
+    'split': 'Tap the email field and scan QR 1. Then tap the Password field and scan QR 2.',
+    'tab-enter': 'Tap the email field, then scan.'
+  };
+  $('show-tip').textContent = tips[a.end] || tips['pass-enter'];
   $('show-print').onclick = () => printItems([a]);
   screen('show');
 }
@@ -338,12 +368,10 @@ function makePdf(items) {
   const cols = Math.floor((210 - 2 * margin + gap) / (size + gap));
   let col = 0, y = margin;
   doc.setFillColor(0, 0, 0);
-  items.forEach(a => {
+  items.flatMap(codes).forEach(c => {
     if (col === 0 && y + size + labelH > 297 - margin) { doc.addPage(); y = margin; doc.setFillColor(0, 0, 0); }
     const x = margin + col * (size + gap);
-    const q = qrcode(0, 'M');
-    q.addData(payload(a));
-    q.make();
+    const q = makeQr(c.data);
     const n = q.getModuleCount(), quiet = 4, cell = size / (n + 2 * quiet);
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
@@ -351,7 +379,7 @@ function makePdf(items) {
       }
     }
     doc.setFontSize(7);
-    doc.text(a.label || a.user, x + size / 2, y + size + 3, { align: 'center', maxWidth: size });
+    doc.text(c.caption, x + size / 2, y + size + 3, { align: 'center', maxWidth: size });
     col++;
     if (col >= cols) { col = 0; y += size + labelH + gap; }
   });
@@ -373,13 +401,13 @@ async function printItems(items) {
   // Computer: normal browser print
   const area = $('print-area');
   area.innerHTML = '';
-  items.forEach(a => {
+  items.flatMap(codes).forEach(c => {
     const d = document.createElement('div');
     d.className = 'pitem';
-    d.innerHTML = qrSvg(a);
+    d.innerHTML = qrSvg(c.data);
     const l = document.createElement('div');
     l.className = 'plabel';
-    l.textContent = a.label || a.user;
+    l.textContent = c.caption;
     d.appendChild(l);
     area.appendChild(d);
   });
